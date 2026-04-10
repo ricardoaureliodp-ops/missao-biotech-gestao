@@ -19,12 +19,12 @@ st.markdown("---")
 
 api_key = st.secrets.get("GEMINI_API_KEY")
 if not api_key:
-    st.error("🚨 Chave API não encontrada.")
+    st.error("🚨 Chave API não configurada.")
     st.stop()
 
 genai.configure(api_key=api_key)
 
-# NOME PURO. É assim que o Google gosta em 2026.
+# Testando o nome mais simples possível
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 with st.sidebar:
@@ -40,33 +40,26 @@ if nome_aluno and turma_aluno:
     if "messages" not in st.session_state or len(st.session_state.messages) == 0:
         st.session_state.messages = []
         st.session_state.enviado = False
-        
         try:
-            # Chamada super simples para testar
-            res = model.generate_content(f"Olá! Sou a diretora da BioTech. O aluno {nome_aluno} está aqui. Inicie a simulação.")
+            res = model.generate_content("Olá, apresente-se como Diretora da BioTech.")
             st.session_state.messages.append({"role": "assistant", "content": res.text})
         except Exception as e:
-            st.error(f"Erro ao acordar a IA: {e}")
+            st.error(f"Erro na IA: {e}")
 
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]): st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Digite sua resposta aqui..."):
+    if prompt := st.chat_input("Digite aqui..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
-        
         hist = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
-        
         try:
-            resp = model.generate_content(f"Contexto: BioTech. Aluno: {nome_aluno}. Histórico:\n{hist}")
+            resp = model.generate_content(f"Diretora BioTech. Histórico:\n{hist}")
             with st.chat_message("assistant"): st.markdown(resp.text)
             st.session_state.messages.append({"role": "assistant", "content": resp.text})
-            
             if "RELATORIO_FINAL" in resp.text and not st.session_state.enviado:
                 enviar_para_planilha(nome_aluno, turma_aluno, resp.text)
                 st.session_state.enviado = True
-                st.success("✅ Nota enviada para a planilha!")
-        except Exception as e:
-            st.error(f"Erro na resposta: {e}")
+        except: pass
 else:
-    st.info("👈 Digite seu Nome e Turma ali na esquerda para a IA aparecer!")
+    st.info("👈 Digite Nome e Turma para começar!")
