@@ -1,5 +1,6 @@
 import streamlit as st
 from google import genai
+from google.genai import types
 
 st.set_page_config(page_title="Missão: Gestão de Projetos", page_icon="🏗️")
 
@@ -12,7 +13,7 @@ if not api_key:
     st.error("🚨 Atenção: Chave API não encontrada! O professor precisa configurar o cofre (Secrets).")
     st.stop()
 
-# NOVO PADRÃO 2026: Cliente da API turbinada
+# Cliente da API
 client = genai.Client(api_key=api_key)
 
 with st.sidebar:
@@ -24,7 +25,7 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
-# Definindo a regra mestre (atualiza sempre com o nome do aluno)
+# A Regra do Jogo
 instrucao_mestre = f"""
 Você é a Diretora de Operações da BioTech. O aluno {nome_aluno if nome_aluno else 'que está falando com você'} é o novo Gerente de Projetos.
 CENÁRIO: O lançamento do novo 'Eco-Filtro' está atrasado, a equipe está brigando e os custos subiram 30%.
@@ -42,14 +43,19 @@ REGRAS:
 - No final da Fase 3, escreva exatamente a palavra 'RELATORIO_FINAL' e resuma o desempenho dele.
 """
 
+# Configuração blindada para evitar erros no servidor
+configuracao = types.GenerateContentConfig(
+    system_instruction=instrucao_mestre,
+)
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
     
-    # Primeira mensagem da Diretora usando o novo motor 2.0
+    # Primeira mensagem da Diretora (Usando o motor 1.5 Flash)
     response = client.models.generate_content(
-        model='gemini-2.0-flash',
+        model='gemini-1.5-flash',
         contents="Comece a simulação se apresentando como Diretora da BioTech e pedindo ajuda para o projeto. Seja breve.",
-        config={'system_instruction': instrucao_mestre}
+        config=configuracao
     )
     st.session_state.messages.append({"role": "assistant", "content": response.text})
 
@@ -61,14 +67,14 @@ if nome_aluno and turma_aluno:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
         
-        # Junta o histórico
+        # Junta o histórico da conversa
         contexto = "\n\n".join([f"{'ALUNO' if m['role']=='user' else 'DIRETORA'}: {m['content']}" for m in st.session_state.messages])
         
-        # Chama a IA
+        # Resposta da IA (Usando o motor 1.5 Flash)
         resposta_ia = client.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-1.5-flash',
             contents=contexto,
-            config={'system_instruction': instrucao_mestre}
+            config=configuracao
         )
         
         with st.chat_message("assistant"): st.markdown(resposta_ia.text)
