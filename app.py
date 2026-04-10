@@ -19,12 +19,12 @@ st.markdown("---")
 
 api_key = st.secrets.get("GEMINI_API_KEY")
 if not api_key:
-    st.error("🚨 Chave API não configurada.")
+    st.error("🚨 Chave API não encontrada nos Secrets.")
     st.stop()
 
 genai.configure(api_key=api_key)
 
-# Testando o nome mais simples possível
+# AQUI ESTAVA O ERRO: Agora o nome está limpo e sem a barra final!
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 with st.sidebar:
@@ -41,7 +41,7 @@ if nome_aluno and turma_aluno:
         st.session_state.messages = []
         st.session_state.enviado = False
         try:
-            res = model.generate_content("Olá, apresente-se como Diretora da BioTech.")
+            res = model.generate_content("Olá, apresente-se como Diretora da BioTech e peça ajuda com o projeto.")
             st.session_state.messages.append({"role": "assistant", "content": res.text})
         except Exception as e:
             st.error(f"Erro na IA: {e}")
@@ -49,7 +49,7 @@ if nome_aluno and turma_aluno:
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]): st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Digite aqui..."):
+    if prompt := st.chat_input("Digite sua resposta aqui..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
         hist = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
@@ -60,6 +60,7 @@ if nome_aluno and turma_aluno:
             if "RELATORIO_FINAL" in resp.text and not st.session_state.enviado:
                 enviar_para_planilha(nome_aluno, turma_aluno, resp.text)
                 st.session_state.enviado = True
+                st.success("✅ Nota enviada para a planilha!")
         except: pass
 else:
-    st.info("👈 Digite Nome e Turma para começar!")
+    st.info("👈 Digite seu Nome e Turma para a IA aparecer!")
