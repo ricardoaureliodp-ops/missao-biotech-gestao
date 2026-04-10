@@ -10,7 +10,7 @@ def enviar_para_planilha(nome, turma, relatorio):
         "entry.449784386": turma,
         "entry.474665496": relatorio
     }
-    try: requests.post(url, data=dados)
+    try: requests.post(url, data=dados, timeout=5)
     except: pass
 
 st.set_page_config(page_title="Missão: BioTech", page_icon="🏗️")
@@ -19,12 +19,12 @@ st.markdown("---")
 
 api_key = st.secrets.get("GEMINI_API_KEY")
 if not api_key:
-    st.error("🚨 Chave API não configurada nos Secrets.")
+    st.error("🚨 Chave API não encontrada.")
     st.stop()
 
 genai.configure(api_key=api_key)
 
-# MUDANÇA AQUI: Tiramos o "models/" e deixamos apenas o nome puro
+# NOME PURO. É assim que o Google gosta em 2026.
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 with st.sidebar:
@@ -41,33 +41,32 @@ if nome_aluno and turma_aluno:
         st.session_state.messages = []
         st.session_state.enviado = False
         
-        instrucao = f"Você é a Diretora da BioTech. O aluno {nome_aluno} é o Gerente. Guie-o em 3 fases (Diagnóstico, Planejamento, Solução). Ao final, dê nota 0-10 e escreva RELATORIO_FINAL."
-        
         try:
-            res = model.generate_content(f"{instrucao}\n\nApresente-se e peça ajuda com o projeto.")
+            # Chamada super simples para testar
+            res = model.generate_content(f"Olá! Sou a diretora da BioTech. O aluno {nome_aluno} está aqui. Inicie a simulação.")
             st.session_state.messages.append({"role": "assistant", "content": res.text})
         except Exception as e:
-            st.error(f"Erro ao iniciar IA: {e}")
+            st.error(f"Erro ao acordar a IA: {e}")
 
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]): st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Digite sua resposta..."):
+    if prompt := st.chat_input("Digite sua resposta aqui..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
         
         hist = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
         
         try:
-            resp = model.generate_content(hist)
+            resp = model.generate_content(f"Contexto: BioTech. Aluno: {nome_aluno}. Histórico:\n{hist}")
             with st.chat_message("assistant"): st.markdown(resp.text)
             st.session_state.messages.append({"role": "assistant", "content": resp.text})
             
             if "RELATORIO_FINAL" in resp.text and not st.session_state.enviado:
                 enviar_para_planilha(nome_aluno, turma_aluno, resp.text)
                 st.session_state.enviado = True
-                st.success("✅ Nota registrada na planilha!")
+                st.success("✅ Nota enviada para a planilha!")
         except Exception as e:
             st.error(f"Erro na resposta: {e}")
 else:
-    st.info("👈 Preencha seu Nome e Turma ao lado para a Diretora aparecer.")
+    st.info("👈 Digite seu Nome e Turma ali na esquerda para a IA aparecer!")
