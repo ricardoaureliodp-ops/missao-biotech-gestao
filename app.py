@@ -12,7 +12,7 @@ if not api_key:
     st.error("🚨 Atenção: Chave API não encontrada! O professor precisa configurar o cofre (Secrets).")
     st.stop()
 
-# NOVO PADRÃO: Cliente da API turbinada
+# NOVO PADRÃO 2026: Cliente da API turbinada
 client = genai.Client(api_key=api_key)
 
 with st.sidebar:
