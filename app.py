@@ -1,58 +1,46 @@
 import streamlit as st
-import google.generativeai as genai
 import requests
+import json
 
-# Função para a planilha
-def enviar_dados(n, t, r):
-    url = "https://docs.google.com/forms/d/e/1FAIpQLSf971GsVen1ehIuhMLQGdLjp7qTkM0GCcF7xik4AUdeoRM6AA/formResponse"
-    d = {"entry.2033090623": n, "entry.449784386": t, "entry.474665496": r}
-    try: requests.post(url, data=d, timeout=5)
+# --- FUNÇÃO PARA FALAR COM O GOOGLE (SEM BIBLIOTECA) ---
+def chamar_gemini(prompt, api_key):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    headers = {'Content-Type': 'application/json'}
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+    response = requests.post(url, headers=headers, json=payload)
+    if response.status_code == 200:
+        return response.json()['candidates'][0]['content']['parts'][0]['text']
+    else:
+        return f"Erro na Diretoria: {response.status_code}"
+
+# --- FUNÇÃO PARA A PLANILHA ---
+def enviar_planilha(n, t, r):
+    url_form = "https://docs.google.com/forms/d/e/1FAIpQLSf971GsVen1ehIuhMLQGdLjp7qTkM0GCcF7xik4AUdeoRM6AA/formResponse"
+    dados = {"entry.2033090623": n, "entry.449784386": t, "entry.474665496": r}
+    try: requests.post(url_form, data=dados, timeout=5)
     except: pass
 
 st.set_page_config(page_title="Missão BioTech", page_icon="🏗️")
 st.title("🏗️ Desafio: Gestão de Projetos")
 
 api_key = st.secrets.get("GEMINI_API_KEY")
-if not api_key:
-    st.error("🚨 Chave API não configurada.")
-    st.stop()
-
-genai.configure(api_key=api_key)
-
-# TENTA ENCONTRAR UM MODELO QUE FUNCIONE (SISTEMA ANTI-404)
-if "model_name" not in st.session_state:
-    modelos_para_testar = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro']
-    sucesso = False
-    for m in modelos_para_testar:
-        try:
-            teste = genai.GenerativeModel(m)
-            teste.generate_content("oi", generation_config={"max_output_tokens": 1})
-            st.session_state.model_name = m
-            sucesso = True
-            break
-        except:
-            continue
-    if not sucesso:
-        st.error("🚨 O Google está instável hoje. Tente dar Reboot no Streamlit.")
-        st.stop()
-
-model = genai.GenerativeModel(st.session_state.model_name)
 
 with st.sidebar:
     st.header("📋 Identificação")
     nome = st.text_input("Seu Nome:")
     turma = st.text_input("Sua Turma:")
-    if st.button("Reiniciar Atividade"):
-        st.session_state.chat = []
+    if st.button("Reiniciar"):
+        st.session_state.clear()
         st.rerun()
 
-if "chat" not in st.session_state: st.session_state.chat = []
-
 if nome and turma:
-    if not st.session_state.chat:
-        instrucao = f"Você é a Diretora da BioTech. O aluno {nome} é o Gerente. Peça ajuda com o projeto. No final escreva RELATORIO_FINAL."
-        res = model.generate_content(instrucao)
-        st.session_state.chat.append({"role": "assistant", "content": res.text})
+    if "chat" not in st.session_state:
+        st.session_state.chat = []
+        # Primeira fala da Diretora
+        msg_inicial = f"Olá {nome}, sou a Diretora da BioTech. Nosso projeto está atrasado e 30% mais caro. Como gerente, qual sua primeira ação? (Ao final darei nota e direi RELATORIO_FINAL)"
+        st.session_state.chat.append({"role": "assistant", "content": msg_inicial})
 
     for m in st.session_state.chat:
         with st.chat_message(m["role"]): st.write(m["content"])
@@ -60,12 +48,15 @@ if nome and turma:
     if p := st.chat_input("Responda aqui..."):
         st.session_state.chat.append({"role": "user", "content": p})
         with st.chat_message("user"): st.write(p)
-        res_ia = model.generate_content(f"Diretora BioTech. Aluno: {nome}. Fala: {p}")
-        st.session_state.chat.append({"role": "assistant", "content": res_ia.text})
-        with st.chat_message("assistant"): st.write(res_ia.text)
         
-        if "RELATORIO_FINAL" in res_ia.text:
-            enviar_dados(nome, turma, res_ia.text)
+        # Chama a IA no modo "Raiz"
+        resposta_ia = chamar_gemini(f"Você é a Diretora BioTech. O aluno {nome} disse: {p}. Responda e continue o desafio.", api_key)
+        
+        st.session_state.chat.append({"role": "assistant", "content": resposta_ia})
+        with st.chat_message("assistant"): st.write(resposta_ia)
+        
+        if "RELATORIO_FINAL" in resposta_ia:
+            enviar_planilha(nome, turma, resposta_ia)
             st.success("✅ Nota enviada!")
 else:
-    st.info("👈 Digite Nome e Turma ao lado.")
+    st.info("👈 Identifique-se para começar.")
