@@ -19,11 +19,13 @@ st.markdown("---")
 
 api_key = st.secrets.get("GEMINI_API_KEY")
 if not api_key:
-    st.error("🚨 Chave API não configurada.")
+    st.error("🚨 Chave API não configurada nos Secrets.")
     st.stop()
 
 genai.configure(api_key=api_key)
-model = genai.GenerativeModel('models/gemini-1.5-flash')
+
+# MUDANÇA AQUI: Tiramos o "models/" e deixamos apenas o nome puro
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 with st.sidebar:
     st.header("📋 Identificação")
@@ -34,42 +36,38 @@ with st.sidebar:
         st.session_state.enviado = False
         st.rerun()
 
-# --- SÓ COMEÇA O JOGO SE TIVER NOME E TURMA ---
 if nome_aluno and turma_aluno:
     if "messages" not in st.session_state or len(st.session_state.messages) == 0:
         st.session_state.messages = []
         st.session_state.enviado = False
         
-        instrucao = f"Você é a Diretora da BioTech. O aluno {nome_aluno} é o Gerente. Avalie em 3 fases. No fim diga RELATORIO_FINAL e nota 0-10."
+        instrucao = f"Você é a Diretora da BioTech. O aluno {nome_aluno} é o Gerente. Guie-o em 3 fases (Diagnóstico, Planejamento, Solução). Ao final, dê nota 0-10 e escreva RELATORIO_FINAL."
         
         try:
-            # Força a primeira mensagem a aparecer agora
-            res = model.generate_content(f"{instrucao}\n\nApresente-se e peça ajuda com o projeto agora.")
+            res = model.generate_content(f"{instrucao}\n\nApresente-se e peça ajuda com o projeto.")
             st.session_state.messages.append({"role": "assistant", "content": res.text})
         except Exception as e:
-            st.error(f"Erro na IA: {e}")
+            st.error(f"Erro ao iniciar IA: {e}")
 
-    # Mostra o chat
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]): st.markdown(msg["content"])
 
-    # Entrada do aluno
-    if prompt := st.chat_input("Digite sua resposta aqui..."):
+    if prompt := st.chat_input("Digite sua resposta..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
         
         hist = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
         
         try:
-            resp = model.generate_content(f"Diretora BioTech: {nome_aluno}\n{hist}")
+            resp = model.generate_content(hist)
             with st.chat_message("assistant"): st.markdown(resp.text)
             st.session_state.messages.append({"role": "assistant", "content": resp.text})
             
             if "RELATORIO_FINAL" in resp.text and not st.session_state.enviado:
                 enviar_para_planilha(nome_aluno, turma_aluno, resp.text)
                 st.session_state.enviado = True
-                st.success("✅ Nota enviada para a planilha!")
+                st.success("✅ Nota registrada na planilha!")
         except Exception as e:
-            st.error(f"Erro ao responder: {e}")
+            st.error(f"Erro na resposta: {e}")
 else:
-    st.info("👈 Por favor, preencha seu Nome e Turma na lateral para a Diretora da BioTech aparecer!")
+    st.info("👈 Preencha seu Nome e Turma ao lado para a Diretora aparecer.")
