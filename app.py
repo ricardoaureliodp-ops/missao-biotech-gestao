@@ -1,6 +1,23 @@
 import streamlit as st
-import google.generativeai as genai
 import requests
+
+# --- FUNÇÃO RAIZ PARA FALAR COM O GOOGLE (ESTRADA v1) ---
+def chamar_gemini(prompt, api_key):
+    # Usando a versão oficial (v1) e o modelo mais rápido (1.5-flash)
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
+    headers = {'Content-Type': 'application/json'}
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=15)
+        if response.status_code == 200:
+            return response.json()['candidates'][0]['content']['parts'][0]['text']
+        else:
+            # Se der erro, agora a IA vai nos contar o motivo exato em texto!
+            return f"Erro na Diretoria. Código: {response.status_code}. Detalhe: {response.text}"
+    except Exception as e:
+        return f"Erro de conexão com a internet. Detalhe: {e}"
 
 # --- FUNÇÃO PARA A PLANILHA ---
 def enviar_planilha(n, t, r):
@@ -13,17 +30,11 @@ st.set_page_config(page_title="Missão BioTech", page_icon="🏗️")
 st.title("🏗️ Desafio: Gestão de Projetos")
 st.markdown("---")
 
-# PUXA A CHAVE NOVA DOS SECRETS
+# PUXA A CHAVE DOS SECRETS
 api_key = st.secrets.get("GEMINI_API_KEY")
 if not api_key:
     st.error("🚨 Chave API não encontrada nos Secrets.")
     st.stop()
-
-# CONFIGURA A BIBLIOTECA OFICIAL DO GOOGLE
-genai.configure(api_key=api_key)
-
-# A MUDANÇA SALVADORA: Usando o modelo 1.0 Pro que é universal e imune ao erro 404
-model = genai.GenerativeModel('gemini-1.0-pro')
 
 with st.sidebar:
     st.header("📋 Identificação")
@@ -47,19 +58,16 @@ if nome and turma:
         st.session_state.chat.append({"role": "user", "content": p})
         with st.chat_message("user"): st.markdown(p)
         
-        try:
-            # Chama a IA de forma oficial e segura
-            contexto = f"Você é a Diretora da BioTech. O aluno {nome} respondeu: '{p}'. Continue o desafio de forma curta e direta. Se ele resolver, dê nota 0-10 e escreva RELATORIO_FINAL."
-            resposta_ia = model.generate_content(contexto)
-            
-            st.session_state.chat.append({"role": "assistant", "content": resposta_ia.text})
-            with st.chat_message("assistant"): st.markdown(resposta_ia.text)
-            
-            if "RELATORIO_FINAL" in resposta_ia.text and not st.session_state.enviado:
-                enviar_planilha(nome, turma, resposta_ia.text)
-                st.session_state.enviado = True
-                st.success("✅ Nota registrada na planilha!")
-        except Exception as e:
-            st.error(f"Ocorreu um erro. Tente novamente. Detalhe: {e}")
+        # Chama a IA usando a nossa função direta
+        contexto = f"Você é a Diretora da BioTech. O aluno {nome} respondeu: '{p}'. Continue o desafio de forma curta e direta. Se ele resolver, dê nota 0-10 e escreva RELATORIO_FINAL."
+        resposta_ia = chamar_gemini(contexto, api_key)
+        
+        st.session_state.chat.append({"role": "assistant", "content": resposta_ia})
+        with st.chat_message("assistant"): st.markdown(resposta_ia)
+        
+        if "RELATORIO_FINAL" in resposta_ia and not st.session_state.enviado:
+            enviar_planilha(nome, turma, resposta_ia)
+            st.session_state.enviado = True
+            st.success("✅ Nota registrada na planilha!")
 else:
     st.info("👈 Preencha os dados ao lado para começar.")
