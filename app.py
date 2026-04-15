@@ -1,10 +1,10 @@
 import streamlit as st
 import requests
 
-# --- FUNÇÃO RAIZ PARA FALAR COM O GOOGLE (ESTRADA v1) ---
+# --- FUNÇÃO RAIZ PARA FALAR COM O GOOGLE (ESTRADA v1beta) ---
 def chamar_gemini(prompt, api_key):
-    # Usando a versão oficial (v1) e o modelo mais rápido (1.5-flash)
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
+    # CORREÇÃO CIRÚRGICA: Usando v1beta, onde o Google confirmou que o Flash mora!
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     headers = {'Content-Type': 'application/json'}
     payload = {
         "contents": [{"parts": [{"text": prompt}]}]
@@ -14,8 +14,7 @@ def chamar_gemini(prompt, api_key):
         if response.status_code == 200:
             return response.json()['candidates'][0]['content']['parts'][0]['text']
         else:
-            # Se der erro, agora a IA vai nos contar o motivo exato em texto!
-            return f"Erro na Diretoria. Código: {response.status_code}. Detalhe: {response.text}"
+            return f"Erro do Google: {response.status_code}. Detalhe: {response.text}"
     except Exception as e:
         return f"Erro de conexão com a internet. Detalhe: {e}"
 
