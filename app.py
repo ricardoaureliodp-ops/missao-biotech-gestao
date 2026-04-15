@@ -21,7 +21,9 @@ if not api_key:
 
 # CONFIGURA A BIBLIOTECA OFICIAL DO GOOGLE
 genai.configure(api_key=api_key)
-model = genai.GenerativeModel('gemini-1.5-flash')
+
+# A MUDANÇA SALVADORA: Usando o modelo 1.0 Pro que é universal e imune ao erro 404
+model = genai.GenerativeModel('gemini-1.0-pro')
 
 with st.sidebar:
     st.header("📋 Identificação")
@@ -47,7 +49,7 @@ if nome and turma:
         
         try:
             # Chama a IA de forma oficial e segura
-            contexto = f"Você é a Diretora da BioTech. O aluno {nome} respondeu: '{p}'. Continue o desafio. Se ele resolver, dê nota 0-10 e escreva RELATORIO_FINAL."
+            contexto = f"Você é a Diretora da BioTech. O aluno {nome} respondeu: '{p}'. Continue o desafio de forma curta e direta. Se ele resolver, dê nota 0-10 e escreva RELATORIO_FINAL."
             resposta_ia = model.generate_content(contexto)
             
             st.session_state.chat.append({"role": "assistant", "content": resposta_ia.text})
@@ -56,7 +58,7 @@ if nome and turma:
             if "RELATORIO_FINAL" in resposta_ia.text and not st.session_state.enviado:
                 enviar_planilha(nome, turma, resposta_ia.text)
                 st.session_state.enviado = True
-                st.success("✅ Nota registrada!")
+                st.success("✅ Nota registrada na planilha!")
         except Exception as e:
             st.error(f"Ocorreu um erro. Tente novamente. Detalhe: {e}")
 else:
