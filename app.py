@@ -2,10 +2,10 @@ import streamlit as st
 import requests
 import json
 
-# --- FUNÇÃO PARA FALAR COM O GOOGLE (MÉTODO ESTÁVEL v1) ---
+# --- FUNÇÃO PARA FALAR COM O GOOGLE (MÉTODO v1beta) ---
 def chamar_gemini(prompt, api_key):
-    # Usamos a versão v1 que é a mais sólida para evitar erros 404
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
+    # Voltamos para v1beta que é o caminho oficial para chaves novas
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     headers = {'Content-Type': 'application/json'}
     payload = {
         "contents": [{"parts": [{"text": prompt}]}]
@@ -31,7 +31,7 @@ st.set_page_config(page_title="Missão BioTech", page_icon="🏗️")
 st.title("🏗️ Desafio: Gestão de Projetos")
 st.markdown("---")
 
-# Puxa a chave dos Secrets do Streamlit
+# Puxa a chave dos Secrets do Streamlit (Cofre Seguro)
 api_key = st.secrets.get("GEMINI_API_KEY")
 
 # --- BARRA LATERAL ---
@@ -67,9 +67,8 @@ if nome and turma:
         with st.chat_message("user"):
             st.markdown(p)
         
-        # Chama a IA para responder
-        # Passamos um contexto simples para ela saber quem é e o que fazer
-        prompt_full = f"Você é a Diretora da BioTech. O aluno {nome} é o gerente. Responda à fala dele: '{p}'. Continue o desafio de gestão. Se ele resolver o problema, dê nota 0-10 e escreva obrigatoriamente RELATORIO_FINAL."
+        # Chama a IA para responder com o contexto da Diretora
+        prompt_full = f"Você é a Diretora da BioTech. O aluno {nome} é o gerente do projeto. Responda à fala dele: '{p}'. Continue o desafio de gestão. Se ele resolver o problema satisfatoriamente, dê uma nota de 0 a 10 e escreva obrigatoriamente a palavra RELATORIO_FINAL no fim."
         
         resposta_ia = chamar_gemini(prompt_full, api_key)
         
@@ -78,7 +77,7 @@ if nome and turma:
         with st.chat_message("assistant"):
             st.markdown(resposta_ia)
         
-        # Se a IA encerrar com a palavra-chave, envia para a planilha
+        # Envio automático para a planilha
         if "RELATORIO_FINAL" in resposta_ia and not st.session_state.enviado:
             enviar_planilha(nome, turma, resposta_ia)
             st.session_state.enviado = True
