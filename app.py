@@ -1,10 +1,10 @@
 import streamlit as st
 import requests
 
-# --- FUNÇÃO RAIZ PARA FALAR COM O GOOGLE (ESTRADA v1beta) ---
+# --- FUNÇÃO RAIZ PARA FALAR COM O GOOGLE (MODELO CLÁSSICO INFALÍVEL) ---
 def chamar_gemini(prompt, api_key):
-    # CORREÇÃO CIRÚRGICA: Usando v1beta, onde o Google confirmou que o Flash mora!
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    # Mudamos para 'gemini-pro', o modelo universal que nunca dá 404
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
     headers = {'Content-Type': 'application/json'}
     payload = {
         "contents": [{"parts": [{"text": prompt}]}]
